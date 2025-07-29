@@ -8,8 +8,8 @@ import (
 	"strings"
 )
 
+// randomInt64Slice returns a slice of `n` random integers using the `crypto/rand` library.
 func randomInt64Slice(n int, max int64) (slice []int64) {
-	// Get a slice of `n` random integers using the `crypto/rand` library
 	slice = []int64{}
 	for range n {
 		v, err := rand.Int(rand.Reader, big.NewInt(max))
@@ -21,9 +21,9 @@ func randomInt64Slice(n int, max int64) (slice []int64) {
 	return
 }
 
+// asciiProperCase performs quick and dirty proper case.
+// `s` is assumed to be a lower-case ASCII string.
 func asciiProperCase(s string) string {
-	// Quick and dirty proper case.
-	// `s` is assumed to be a lower-case ASCII string
 	return string(append([]byte{s[0] ^ 0x20}, s[1:]...))
 }
 
