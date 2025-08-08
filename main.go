@@ -2,10 +2,18 @@ package main
 
 import (
 	"crypto/rand"
+	"flag"
 	"fmt"
 	"math/big"
+	"os"
 	"passgen-go/wordlist"
+	"regexp"
 	"strings"
+)
+
+var (
+	passwordLength     = flag.Int("length", 3, "Number of words to use in password")
+	passwordIterations = flag.Int("iterations", 1, "Generate this number of passwords")
 )
 
 // randomInt64Slice returns a slice of `n` random integers using the `crypto/rand` library.
@@ -27,13 +35,62 @@ func asciiProperCase(s string) string {
 	return string(append([]byte{s[0] ^ 0x20}, s[1:]...))
 }
 
-func main() {
-	effWordlist := wordlist.FromFile("eff.txt")
-	ints := randomInt64Slice(3, int64(effWordlist.TotalLines()))
+type urlType int
 
-	words := []string{}
-	for i := range len(ints) {
-		words = append(words, asciiProperCase(effWordlist.GetWord(ints[i])))
+const (
+	file = iota
+	remote
+)
+
+func inferURLType(url string) urlType {
+	match, err := regexp.MatchString(`^https?://.*$`, url)
+	if err != nil {
+		return -1
 	}
-	fmt.Printf("%s\n", strings.Join(words,""))
+	if match {
+		return remote
+	}
+	return file
+}
+
+func exit(msg string) {
+	fmt.Println(msg)
+	flag.Usage()
+	os.Exit(1)
+}
+
+func main() {
+	var wl *wordlist.Wordlist
+	flag.Parse()
+
+	wordlistURL := flag.Arg(0)
+	if wordlistURL == "" {
+		exit("no wordlist url or file provided")
+	}
+	switch inferURLType(wordlistURL) {
+	case file:
+		wordlist, err := wordlist.FromFile(wordlistURL)
+		if err != nil {
+			exit(err.Error())
+		}
+		wl = wordlist
+	case remote:
+		wordlist, err := wordlist.FromURL(wordlistURL)
+		if err != nil {
+			exit(err.Error())
+		}
+		wl = wordlist
+	case -1:
+		exit("provided wordlist url or file is invalid")
+	}
+
+	for range *passwordIterations {
+		ints := randomInt64Slice(*passwordLength, int64(wl.TotalLines()))
+
+		words := []string{}
+		for i := range len(ints) {
+			words = append(words, asciiProperCase(wl.GetWord(ints[i])))
+		}
+		fmt.Printf("%s\n", strings.Join(words, ""))
+	}
 }
